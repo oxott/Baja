@@ -7,6 +7,7 @@
 #include <mcp2515.h>          //Biblioteca para o CAN
 #include <LoRa.h>             //Biblioteca do LoRa
 #include <Thread.h>           //Biblioteca para a criação de Threads
+#include <ThreadController.h>
 
 String outgoing;              //Mensagem de saída do LoRa
 byte localAddress = 0xFF;     //Endereço desse dispositivo
@@ -17,6 +18,10 @@ struct can_frame canMsg;      //Struct com o frame recebido pelo CAN
 MCP2515 mcp2515(CAN_CS);      //Configuração do Pino de Chip Select do CAN
 
 Thread threadSendBox;
+ThreadController cpu;
+
+int med1 = 0;
+int med1Data = 0;
 
 void setup() {
   //Begins SPI communication
@@ -40,11 +45,13 @@ void setup() {
   }
   Serial.println("LoRa init succeeded.");
 
-  threadSendBox.setInterval(1000);
+  threadSendBox.setInterval(500);
   threadSendBox.onRun(&sendBox);
+  cpu.add(&threadSendBox);
 }
 
 void loop() {
+  cpu.run();
   //Desabilita o LoRa e ativa o CAN
   digitalWrite(CAN_CS, LOW);
   digitalWrite(LORA_CS, HIGH);
@@ -66,5 +73,12 @@ int restaura(byte b0, byte b1) {
 void sendBox(){
   digitalWrite(CAN_CS, HIGH);
   digitalWrite(LORA_CS, LOW);
-  print("Enviei");
+  LoRa.beginPacket();                   // start packet
+  LoRa.write(destination);              // add destination address
+  LoRa.write(localAddress);             // add sender address
+  LoRa.write(med1);
+  LoRa.print(med1Data);                     // add payload
+  LoRa.endPacket();                     // finish packet and send it
+  Serial.println("Enviei: " + String(med1) + " = " + String(med1Data));
+  Serial.println("");
 }
